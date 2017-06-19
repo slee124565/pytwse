@@ -33,7 +33,8 @@ class TWSE(object):
                             help='OTC market',
                             default=False)
         cmd_args = parser.parse_args(self.args.cmd_args)
-        self.logger.debug('list command with args %s' % cmd_args)
+        setattr(self.args, 'cmd_args', cmd_args)
+        self.logger.debug('get list command with args %s' % self.args.cmd_args)
         return List(args=self.args,logger=self.logger)
     
     def update(self):
@@ -43,7 +44,8 @@ class TWSE(object):
         parser.add_argument('id', help='company id')
         parser.add_argument('period', help='fetch data period: 3m or 3y; m for month, y for year')
         cmd_args = parser.parse_args(self.args.cmd_args)
-        self.logger.debug('list command with args %s' % cmd_args)
+        setattr(self.args, 'cmd_args', cmd_args)
+        self.logger.debug('get update command with args %s' % self.args.cmd_args)
         return Update(args=self.args,logger=self.logger)
     
 if __name__ == '__main__':

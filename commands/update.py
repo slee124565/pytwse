@@ -9,4 +9,4 @@ class Update(BaseCommand):
 
     def run(self):
         ''''''
-        self.logger.debug('update run')    
+        self.logger.debug('update run with args: %s' % self.args)    

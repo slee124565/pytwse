@@ -9,4 +9,4 @@ class List(object):
     
     def run(self):
         ''''''
-        self.logger.debug('list run')
+        self.logger.debug('list run with args: %s' % self.args)
