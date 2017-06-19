@@ -3,34 +3,23 @@
 import argparse
 import logging
 import sys
+from commands.list import List
+from commands.update import Update
 
 logger = logging.getLogger(__name__)
 
 class TWSE(object):
     
-    def __init__(self, logger=None):
+    def __init__(self,args=None,logger=None):
         self.logger = logger or logging.getLogger(__name__)
-        parser = argparse.ArgumentParser(
-            description='TWSE Site (http://www.twse.com.tw/) Parser',
-            usage='''twse <command> [<args>]
-            
-The most commonly use twse commands are:
-    list                List all stock market companies id and name from TWSE
-    update <id> <3y>    Download last 3 years market trading exchange daily data for company <id> from TWSE
-'''
-            )
-        parser.add_argument('command',
-                           help='Subcommand to run')
-        # parse_args defaults to [1:] for args, but you need to
-        # exclude the rest of the args too, or validation will fail
-        args = parser.parse_args(sys.argv[1:2])
+        self.args = args
+
         if not hasattr(self, args.command):
             self.logger.error('Unrecognized command %s' % args.command)
-            parser.print_help()
-            exit(1)
-        # use dispatch pattern to invoke method with same name
-        getattr(self, args.command)()
-        
+            sys.exit(1)
+        else:
+            self.worker = getattr(self, self.args.command)()
+                
     def list(self):
         parser = argparse.ArgumentParser(
             description='List all stock id and name from TWSE'
@@ -43,8 +32,9 @@ The most commonly use twse commands are:
                             action='store_true',
                             help='OTC market',
                             default=False)
-        args = parser.parse_args(sys.argv[2:])
-        self.logger.info('list market info: stock %s, otc %s' % (args.stock,args.otc))
+        cmd_args = parser.parse_args(self.args.cmd_args)
+        self.logger.debug('list command with args %s' % cmd_args)
+        return List(args=self.args,logger=self.logger)
     
     def update(self):
         parser = argparse.ArgumentParser(
@@ -52,12 +42,51 @@ The most commonly use twse commands are:
             )
         parser.add_argument('id', help='company id')
         parser.add_argument('period', help='fetch data period: 3m or 3y; m for month, y for year')
-        args = parser.parse_args(sys.argv[2:])
-        self.logger.info('update market trading exchange data for id %s and period %s' % (
-            args.id,args.period
-            ))
+        cmd_args = parser.parse_args(self.args.cmd_args)
+        self.logger.debug('list command with args %s' % cmd_args)
+        return Update(args=self.args,logger=self.logger)
     
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    TWSE()
+    
+    parser = argparse.ArgumentParser(
+        description='TWSE Site (http://www.twse.com.tw/) Stock Data Parser',
+        usage='''twse <command> [<args>]
+            
+The most commonly use twse commands are:
+    list <args>      List stock market id and name from TWSE
+    update <args>    Update stock data for local storage from TWSE
+''')
+
+    parser.add_argument(
+        'command',
+        help='command to execute')
+
+    parser.add_argument(
+        '--develop',
+        action='store_true',
+        help='set develop mode',
+        default=False)
+
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='print debug message',
+        default=False)
+    
+    parser.add_argument(
+        'cmd_args', 
+        nargs=argparse.REMAINDER)
+    
+    args = parser.parse_args()
+    
+    if args.debug:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+    logging.basicConfig(
+        format='[%(levelname)s]: %(message)s',
+        level=log_level)
+
+    twse = TWSE(args=args)
+    twse.worker.run()
     
