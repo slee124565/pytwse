@@ -1,12 +1,13 @@
 
-from base import BaseCommand
+import logging
 
 class List(object):
     ''''''
     
     def __init__(self,args=None,logger=None):
-        BaseCommand.__init__(self, args=args, logger=logger)
+        self.args = args
+        self.logger = logger or logging.getLogger(__name__)
     
     def run(self):
         ''''''
-        self.logger.debug('list run with args: %s' % self.args)
+        self.logger.info('list run with args: %s' % self.args)
