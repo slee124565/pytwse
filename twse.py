@@ -5,7 +5,7 @@ import logging
 import sys
 from commands.list import List
 from commands.update import Update
-from random import choice
+import os
 
 def _list(args):
     ''''''
@@ -47,6 +47,11 @@ if __name__ == '__main__':
     list_parser.add_argument('target',
                              choices=['stock','otc','all'],
                              help='target twse market')
+    list_parser.add_argument(
+        '--cached',
+        action='store_true',
+        help='read from previous download',
+        default=False)
     list_parser.set_defaults(func=_list)
 
     #-> [update] command arguments
@@ -65,12 +70,11 @@ if __name__ == '__main__':
                         help="1d, 1wk, or 1mo, default: %(default)s",
                         default='1d')
     update_parser.add_argument('target',
-                               help="target twse market (stock,otc,all) or company id")
+                               help="target twse market (stock only now) or company id")
     update_parser.set_defaults(func=_update)
     
     
     args = parser.parse_args()
-    print(args)
     if args.debug:
         log_level = logging.DEBUG
     else:
@@ -79,6 +83,11 @@ if __name__ == '__main__':
         format='[%(levelname)s]: %(message)s',
         level=log_level)
 
+    output = os.path.join(os.path.dirname(__file__),'data')
+    if not os.path.exists(output):
+        os.mkdir(output)
+    setattr(args,'data_path',output)
+    
     args.func(args)
     
     
