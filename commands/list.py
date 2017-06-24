@@ -28,11 +28,24 @@ class List(object):
             self.logger.debug('read from cached file')
             with open(cached_file,'rb') as fh:
                 twse_json = json.loads(fh.read())
-        else:        
-            url = SRC_URL.format(Ymd=datetime.today().strftime('%Y%m%d'))
-            self.logger.debug('download from twse with url: %s' % url)
-            r = requests.get(url)
-            twse_json = r.json()
+        else:
+            target_date = datetime.today()
+            max_try = 7
+            count_try = 1
+            while count_try <= max_try:        
+                url = SRC_URL.format(Ymd=target_date.strftime('%Y%m%d'))
+                self.logger.debug('download from twse with url: %s' % url)
+                r = requests.get(url)
+                twse_json = r.json()
+                if not 'data5' in twse_json.keys() or not 'fields5' in twse_json.keys():
+                    target_date = target_date - timedelta(days=1)
+                    self.logger.warning('twse list date (%s) not exist, try previous day %s' % (
+                        target_date.strftime('%Y-%m-%d'),count_try
+                        ))
+                    count_try += 1
+                else:
+                    break
+
             if self.args.develop:
                 with open(cached_file,'wb') as fh:
                     fh.write(json.dumps(twse_json,indent=2))
