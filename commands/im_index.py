@@ -15,8 +15,13 @@ class ImIndex(BaseCommand):
     ''''''
     
     @classmethod
-    def add_parser_argument(cls,cmd_parser):
+    def add_cmd_parser(cls,subparsers):
         ''''''
+        cmd_parser = subparsers.add_parser(
+            'im_index',
+            help='http://www.twse.com.tw/zh/page/trading/exchange/MI_INDEX.html',
+            parents=[BaseCommand.get_base_args_parser()])
+    
         cmd_parser.add_argument('--category',
                                      help='[category] query field on page, default:%(default)s',
                                      default='ALLBUT0999'
@@ -24,6 +29,18 @@ class ImIndex(BaseCommand):
         cmd_parser.add_argument('--date',
                                  help='[date] query field on page; format:YYYY-MM-DD, default: today',
                                  default=datetime.today().strftime('%Y-%m-%d'))
+        return cmd_parser
+        
+#     @classmethod
+#     def add_parser_argument(cls,cmd_parser):
+#         ''''''
+#         cmd_parser.add_argument('--category',
+#                                      help='[category] query field on page, default:%(default)s',
+#                                      default='ALLBUT0999'
+#                                      )
+#         cmd_parser.add_argument('--date',
+#                                  help='[date] query field on page; format:YYYY-MM-DD, default: today',
+#                                  default=datetime.today().strftime('%Y-%m-%d'))
         
     def __init__(self, args):
         ''''''
@@ -40,6 +57,7 @@ class ImIndex(BaseCommand):
             
     def run(self):
         ''''''
+        renew_cache = False
         cached_file = os.path.join(self.args.cache_path,self.args.category+'.json')
         self.logger.debug('cached_file: %s' % cached_file)
         if self.args.cached and os.path.exists(cached_file):
@@ -64,17 +82,17 @@ class ImIndex(BaseCommand):
                     count_try += 1
                 else:
                     break
-
-            if self.args.develop:
-                with open(cached_file,'wb') as fh:
-                    fh.write(json.dumps(twse_json,indent=2))
+            renew_cache = True
         
         self.logger.debug('twse json object keys (%s): %s' % (len(twse_json.keys()),
                                                               twse_json.keys()))
-        if self.data_validate(twse_json):
+        if self.data_validate(twse_json) and renew_cache:
             with open(cached_file,'wb') as fh:
                 fh.write(json.dumps(twse_json,indent=2))
-
+            self.logger.debug('cache file renewed')
+        
+        self.logger.info('im_index command executed')
+        self.twse_json = twse_json
         return twse_json
 #         if 'data5' in twse_json.keys() and 'fields5' in twse_json.keys():
 #             stock_id_list = []
