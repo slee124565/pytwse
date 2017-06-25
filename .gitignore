@@ -1,4 +1,4 @@
 **/*.pyc
-
+commands/cache_data
 .project
 .pydevproject
