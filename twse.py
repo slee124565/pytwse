@@ -4,7 +4,6 @@ import argparse
 import logging
 import sys
 from commands.im_index import ImIndex
-from commands.base import BaseCommand
 import os
 from datetime import datetime
 
@@ -13,14 +12,19 @@ def cmd_im_index_execute(args):
     worker = ImIndex(args=args)
     worker.run()
     
-class TWSE(BaseCommand):
+class TWSE():
     
-    def __init__(self, *args, **kwargs):
+    def __init__(self, args, logger=None):
         ''''''
-        super(TWSE,self).__init__(*args, **kwargs)
+        self.args = args
+        self.logger = logger or logging.getLogger(__name__)
         
-    def get_im_index(self):
+    def get_stock_index(self, cached=True):
         ''''''
+        args = ''
+        if cached:
+            args = '--cached'
+        
     
 if __name__ == '__main__':
         

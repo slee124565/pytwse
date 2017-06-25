@@ -25,7 +25,13 @@ class BaseCommand(object):
             help='read from previous download',
             default=False)
         return base_parser
- 
+    
+    @classmethod
+    def get_cache_path(cls):
+        cache_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'cache_data')
+        if not os.path.exists(cache_path):
+            os.mkdir(cache_path)
+        return cache_path
 
     def __init__(self, args, logger=None):
         ''''''
@@ -33,9 +39,5 @@ class BaseCommand(object):
         self.args = args
         self.logger = logger or logging.getLogger(__name__)
 
-        cache_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'cache_data')
-        if not os.path.exists(cache_path):
-            self.logger.debug('mkdir %s' % cache_path)
-            os.mkdir(cache_path)
-        setattr(args,'cache_path',cache_path)
+        setattr(args,'cache_path',BaseCommand.get_cache_path())
     
