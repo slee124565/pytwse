@@ -15,20 +15,31 @@ class ImIndex(BaseCommand):
     ''''''
     
     @classmethod
+    def add_parser_argument(cls,parser):
+        BaseCommand.add_parser_argument(parser)
+        parser.add_argument('--category',
+                                     help='[category] query field on page, default:%(default)s',
+                                     default='ALLBUT0999'
+                                     )
+        parser.add_argument('--date',
+                                 help='[date] query field on page; format:YYYY-MM-DD, default: today',
+                                 default=datetime.today().strftime('%Y-%m-%d'))
+        
+    @classmethod
     def add_cmd_parser(cls,subparsers):
         ''''''
         cmd_parser = subparsers.add_parser(
             'im_index',
-            help='http://www.twse.com.tw/zh/page/trading/exchange/MI_INDEX.html',
-            parents=[BaseCommand.get_base_args_parser()])
+            help='http://www.twse.com.tw/zh/page/trading/exchange/MI_INDEX.html')
     
-        cmd_parser.add_argument('--category',
-                                     help='[category] query field on page, default:%(default)s',
-                                     default='ALLBUT0999'
-                                     )
-        cmd_parser.add_argument('--date',
-                                 help='[date] query field on page; format:YYYY-MM-DD, default: today',
-                                 default=datetime.today().strftime('%Y-%m-%d'))
+#         cmd_parser.add_argument('--category',
+#                                      help='[category] query field on page, default:%(default)s',
+#                                      default='ALLBUT0999'
+#                                      )
+#         cmd_parser.add_argument('--date',
+#                                  help='[date] query field on page; format:YYYY-MM-DD, default: today',
+#                                  default=datetime.today().strftime('%Y-%m-%d'))
+        ImIndex.add_parser_argument(cmd_parser)
         return cmd_parser
         
 #     @classmethod
@@ -41,14 +52,14 @@ class ImIndex(BaseCommand):
 #         cmd_parser.add_argument('--date',
 #                                  help='[date] query field on page; format:YYYY-MM-DD, default: today',
 #                                  default=datetime.today().strftime('%Y-%m-%d'))
-        
+    
     def __init__(self, args):
         ''''''
         super(ImIndex,self).__init__(args)
         setattr(self.args, 'date', datetime.strptime(self.args.date,'%Y-%m-%d'))
         self.logger.debug('ImIndex with args %s' % self.args)
     
-    def data_validate(self,twse_json):
+    def _data_validate(self,twse_json):
 
         if len(twse_json.keys()) == 24:
             return True
@@ -86,7 +97,7 @@ class ImIndex(BaseCommand):
         
         self.logger.debug('twse json object keys (%s): %s' % (len(twse_json.keys()),
                                                               twse_json.keys()))
-        if self.data_validate(twse_json) and renew_cache:
+        if self._data_validate(twse_json) and renew_cache:
             with open(cached_file,'wb') as fh:
                 fh.write(json.dumps(twse_json,indent=2))
             self.logger.debug('cache file renewed')
@@ -105,4 +116,16 @@ class ImIndex(BaseCommand):
 #         else:
 #             self.logger.debug('target members (data5, fields5) not in twse json keys: %s' % twse_json.keys())
 #             return []
+        
+    def get_index(self):
+        stock_id_list = []
+        for entry in self.twse_json.get('data5'):
+            stock_id_list.append(entry[:2]+entry[5:9])
+        return stock_id_list
+        
+    def get_date(self):
+        ''''''
+        return datetime.strptime(self.twse_json.get('date'),'%Y%m%d').date()
+        
+        
         
