@@ -1,5 +1,5 @@
 '''
-TWSE SRC PAGEhttp://www.twse.com.tw/zh/page/trading/exchange/MI_INDEX.html
+TWSE SRC PAGE http://www.twse.com.tw/zh/page/trading/exchange/MI_INDEX.html
 '''
 
 import requests
@@ -31,28 +31,9 @@ class ImIndex(BaseCommand):
         cmd_parser = subparsers.add_parser(
             'im_index',
             help='http://www.twse.com.tw/zh/page/trading/exchange/MI_INDEX.html')
-    
-#         cmd_parser.add_argument('--category',
-#                                      help='[category] query field on page, default:%(default)s',
-#                                      default='ALLBUT0999'
-#                                      )
-#         cmd_parser.add_argument('--date',
-#                                  help='[date] query field on page; format:YYYY-MM-DD, default: today',
-#                                  default=datetime.today().strftime('%Y-%m-%d'))
         ImIndex.add_parser_argument(cmd_parser)
         return cmd_parser
-        
-#     @classmethod
-#     def add_parser_argument(cls,cmd_parser):
-#         ''''''
-#         cmd_parser.add_argument('--category',
-#                                      help='[category] query field on page, default:%(default)s',
-#                                      default='ALLBUT0999'
-#                                      )
-#         cmd_parser.add_argument('--date',
-#                                  help='[date] query field on page; format:YYYY-MM-DD, default: today',
-#                                  default=datetime.today().strftime('%Y-%m-%d'))
-    
+            
     def __init__(self, args):
         ''''''
         super(ImIndex,self).__init__(args)
@@ -60,7 +41,11 @@ class ImIndex(BaseCommand):
         self.logger.debug('ImIndex with args %s' % self.args)
     
     def _data_validate(self,twse_json):
-
+        '''[u'alignsStyle3', u'alignsStyle2', u'alignsStyle1', u'fields4', u'data2', 
+u'alignsStyle5', u'alignsStyle4', u'stat', u'subtitle5', u'subtitle4', u'subtitle1', 
+u'params', u'fields2', u'fields3', u'fields1', u'data1', u'notes5', u'notes4', 
+u'groups5', u'data5', u'data4', u'date', u'data3', u'fields5']
+'''
         if len(twse_json.keys()) == 24:
             return True
         else:
@@ -105,17 +90,6 @@ class ImIndex(BaseCommand):
         self.logger.info('im_index command executed')
         self.twse_json = twse_json
         return twse_json
-#         if 'data5' in twse_json.keys() and 'fields5' in twse_json.keys():
-#             stock_id_list = []
-#             fields = twse_json.get('fields5')
-#             self.logger.debug('%s' % ','.join(n.encode('utf-8') for n in fields[:2]+fields[5:9]))
-#             for entry in twse_json.get('data5'):
-#                 self.logger.debug('%s' % ','.join(n.encode('utf-8') for n in entry[:2]+entry[5:9]))
-#                 stock_id_list.append(entry[:2]+entry[5:9])
-#             return stock_id_list
-#         else:
-#             self.logger.debug('target members (data5, fields5) not in twse json keys: %s' % twse_json.keys())
-#             return []
         
     def get_index(self):
         stock_id_list = []
