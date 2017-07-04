@@ -5,6 +5,7 @@ import logging
 import sys
 from commands.im_index import ImIndex
 from commands.stock_day import StockDay
+from commands.update import Update
 import os
 from datetime import datetime, date
 
@@ -73,7 +74,25 @@ def _cmd_stock_day_execute(args):
     worker = StockDay(args=args)
     worker.run()
     
+def _cmd_update_execute(args):
+    ''''''
+    worker = Update(args=args)
+    worker.run()
+    
 if __name__ == '__main__':
+    
+    #-> common parser
+    base_parser = argparse.ArgumentParser(add_help=False)
+    base_parser.add_argument(
+        '--debug',
+        action='store_true',
+        help='set logging level to DEBUG',
+        default=False)
+    base_parser.add_argument(
+        '--cached',
+        action='store_true',
+        help='read from previous download',
+        default=False)
         
     #-> program parser start
     parser = argparse.ArgumentParser(
@@ -83,12 +102,35 @@ if __name__ == '__main__':
         title='commands')
     
     #-> [im_index] command arguments
-    im_index_parser = ImIndex.add_cmd_parser(subparsers)
-    im_index_parser.set_defaults(func=_cmd_im_index_execute)
+    cmd_parser = subparsers.add_parser(
+        'im_index',
+        help='http://www.twse.com.tw/zh/page/trading/exchange/MI_INDEX.html',
+        parents=[base_parser])
+    cmd_parser.add_argument('--category',
+                                 help='[category] query field on page, default:%(default)s',
+                                 default='ALLBUT0999'
+                                 )
+    cmd_parser.add_argument('--date',
+                             help='[date] query field on page; format:YYYY-MM-DD, default: today',
+                             default=datetime.today().strftime(ImIndex.ARGS_DATE_FORMAT))
+    cmd_parser.set_defaults(func=_cmd_im_index_execute)
     
     #-> [stock_day] command arguments
-    stock_day_parser = StockDay.add_cmd_parser(subparsers)
-    stock_day_parser.set_defaults(func=_cmd_stock_day_execute)
+    cmd_parser = subparsers.add_parser(
+        'stock_day',
+        help='http://www.twse.com.tw/zh/page/trading/exchange/STOCK_DAY.html',
+        parents=[base_parser])
+    cmd_parser.add_argument('--date_select',
+                             help='query field [date-select] on page, default:[today]',
+                             default=datetime.today().strftime(StockDay.ARGS_DATE_FORMAT))
+    cmd_parser.add_argument('stock_no',
+                        help='query field [stockNo] on page')
+
+    cmd_parser.set_defaults(func=_cmd_stock_day_execute)
+    
+    #-> [update] command arguments
+#     update_parser = Update.add_cmd_parser(subparsers)
+#     update_parser.set_defaults(func=_cmd_update_execute)
     
     args = parser.parse_args()
     if args.debug:
@@ -104,7 +146,7 @@ if __name__ == '__main__':
 #         os.mkdir(output)
 #     setattr(args,'data_path',output)
     
-    args.func(args)
+    args.func(vars(args))
     
     
     
