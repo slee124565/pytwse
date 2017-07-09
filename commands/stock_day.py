@@ -50,7 +50,11 @@ class StockDay(BaseCommand):
         self.logger.debug('%s with cache_path %s' % (self.__class__.__name__,
                                                      self.cache_path))
         
-    
+    def __str__(self, *args, **kwargs):
+        return '%s(%s,%s)' % (self.__class__.__name__,
+                              self.stock_no,
+                              self.date_select)
+
     def _data_validate(self,twse_json):
         '''[u'stat', u'title', u'fields', u'notes', u'date', u'data']'''
         if len(twse_json.keys()) == 6:

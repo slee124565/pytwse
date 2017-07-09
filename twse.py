@@ -5,7 +5,8 @@ import logging
 import sys
 from commands.im_index import ImIndex
 from commands.stock_day import StockDay
-from commands.update import Update
+from commands.stock_update import StockUpdate
+# from commands.update import Update
 import os
 from datetime import datetime, date
 
@@ -22,7 +23,7 @@ class TWSE():
     def _get_im_index_singleton(self):
         if self._im_index is None:
             parser = argparse.ArgumentParser()
-            ImIndex.add_parser_argument(parser)
+#             ImIndex.add_parser_argument(parser)
             if self._cached:
                 argv = '--cached'
             if self.logger.getEffectiveLevel() <= logging.DEBUG:
@@ -36,7 +37,7 @@ class TWSE():
     def _get_stock_day_singleton(self,stock_no,date_select=date.today()):
         if self._stock_day is None:
             parser = argparse.ArgumentParser()
-            StockDay.add_parser_argument(parser)
+#             StockDay.add_parser_argument(parser)
             if self._cached:
                 argv = '--cached'
             if self.logger.getEffectiveLevel() <= logging.DEBUG:
@@ -74,11 +75,11 @@ def _cmd_stock_day_execute(args):
     worker = StockDay(args=args)
     worker.run()
     
-def _cmd_update_execute(args):
+def _cmd_stock_update_execute(args):
     ''''''
-    worker = Update(args=args)
+    worker = StockUpdate(**args)
     worker.run()
-    
+        
 if __name__ == '__main__':
     
     #-> common parser
@@ -128,9 +129,17 @@ if __name__ == '__main__':
 
     cmd_parser.set_defaults(func=_cmd_stock_day_execute)
     
-    #-> [update] command arguments
-#     update_parser = Update.add_cmd_parser(subparsers)
-#     update_parser.set_defaults(func=_cmd_update_execute)
+    #-> [stock_update] command arguments
+    cmd_parser = subparsers.add_parser(
+        'stock_update',
+        help='continue stock_day update command',
+        parents=[base_parser])
+    cmd_parser.add_argument('--years',
+                             help='set the total number of years history stock data, default:%(default)s years',
+                             default=3)
+    cmd_parser.add_argument('stock_no',
+                        help='query field [stockNo] on page')
+    cmd_parser.set_defaults(func=_cmd_stock_update_execute)
     
     args = parser.parse_args()
     if args.debug:
@@ -141,11 +150,6 @@ if __name__ == '__main__':
         format='[%(levelname)s]: %(message)s',
         level=log_level)
 
-#     output = os.path.join(os.path.dirname(__file__),'data')
-#     if not os.path.exists(output):
-#         os.mkdir(output)
-#     setattr(args,'data_path',output)
-    
     args.func(vars(args))
     
     

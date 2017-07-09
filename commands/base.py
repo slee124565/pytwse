@@ -35,6 +35,20 @@ class BaseCommand(object):
         else:
             self.cache_path = BaseCommand._get_cache_path()       
 
+    def get_stock_data_path(self,stock_no):
+        data_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),'data')
+        if not os.path.exists(data_path):
+            os.mkdir(data_path)
+        stock_data_path = os.path.join(data_path,stock_no)
+        if not os.path.exists(stock_data_path):
+            os.mkdir(stock_data_path)
+        return stock_data_path
+
+    def get_stock_cache_path(self,stock_no):
+        cache_dir = os.path.join(self.cache_path,self.stock_no)
+        if not os.path.exists(cache_dir):
+            os.mkdir(cache_dir)
+        return cache_dir
         
     def run(self):
         raise Exception('%s interface method <run> not implemented' %
