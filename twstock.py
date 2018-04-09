@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+
+import argparse
+import logging
+
+
+if __name__ == '__main__':
+    # -> common parser
+    from cmds.cmd_base import CMDBase
+
+    base_parser = CMDBase.get_base_parser()
+
+    # program parser start
+    parser = argparse.ArgumentParser(
+        description='TWSE Command Utility Tool: twstock')
+
+    subparsers = parser.add_subparsers(
+        title='commands')
+
+    # [update] command arguments
+    from cmds.cmd_update import CMDUpdate
+    cmd_parser = CMDUpdate.get_cmd_parser(base_parser, subparsers)
+
+    # [analysis] command arguments
+    from cmds.cmd_analysis import CMDAnalysis
+    cmd_parser = CMDAnalysis.get_cmd_parser(base_parser, subparsers)
+
+    args = parser.parse_args()
+
+    # set logging
+    logging.basicConfig(
+        format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
+
+    if args.debug:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
+        logging.getLogger("requests").setLevel(logging.WARNING)
+
+    logger = logging.getLogger()
+    logger.setLevel(log_level)
+    logger.debug('args: %s' % str(args))
+
+    # exec cmd
+    args.func(args)
