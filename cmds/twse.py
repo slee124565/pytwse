@@ -1,8 +1,8 @@
 
 from datetime import timedelta, datetime
 import requests
-import logging
 
+import logging
 logger = logging.getLogger(__name__)
 
 SRC_URL = 'http://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date={Ymd}&stockNo={stock_no}'
@@ -10,10 +10,11 @@ DATE_FORMAT = '%Y-%m-%d'
 
 
 def fetch_json(stock_no, tdate):
-    logger.info('twse fetch stock_no {} with target date {}'.format(stock_no, tdate))
+    logger.debug('twse fetch stock_no {} with target date {}'.format(stock_no, tdate))
     max_try = 14
     count_try = 1
     target_date = tdate
+    twse_json = None
     while count_try <= max_try:
         url = SRC_URL.format(Ymd=target_date.strftime('%Y%m%d'),
                              stock_no=stock_no)
@@ -30,8 +31,8 @@ def fetch_json(stock_no, tdate):
             logger.warning('twse fetch retry count {}'.format(count_try))
         else:
             logger.debug('twse fetch success')
-            logger.info('twse fetch final url {}'.format(url))
-            logger.info('twse fetch final data count {}'.format(len(twse_json.get('data'))))
+            logger.debug('twse fetch final url {}'.format(url))
+            logger.debug('twse fetch final data count {}'.format(len(twse_json.get('data'))))
             break
             
         if count_try > max_try:

@@ -1,4 +1,12 @@
 
+
+from datetime import date
+from dateutil.relativedelta import relativedelta
+from time import sleep
+
+import twse
+import csvstore as stockstore
+
 import logging
 from cmd_base import CMDBase
 
@@ -7,10 +15,35 @@ logger = logging.getLogger(__name__)
 
 class CMDUpdate(CMDBase):
     arg_year_month = 'year_month'
+    arg_years_since = 'years_since'
 
     @classmethod
     def sub_cmd_newly(cls, args):
-        pass
+        # stock_no and years_since
+        stock_no = getattr(args, cls.arg_stock_no)
+        years_since = getattr(args, cls.arg_years_since)
+
+        # date_since, date_end
+        date_end = date.today()
+        date_since = date_end + relativedelta(years=-years_since)
+        t_date = date_since
+
+        while t_date < date_end:
+            # twse_data
+            twse_json = twse.fetch_json(stock_no, t_date)
+            if twse_json is None:
+                logger.warning('twse.fetch_json {} {} fail'.format(stock_no, t_date))
+            else:
+                logger.debug('twse.fetch_json {} {} success'.format(stock_no, t_date))
+                twse_data = twse_json.get('data')
+
+                # save twse_data
+                stockstore.save_twse_data(stock_no, twse_data)
+                logger.info('stock {} data {} saved'.format(stock_no, t_date.strftime('%Y-%m')))
+                sleep(0.3)
+            t_date += relativedelta(months=1)
+        logger.info('==')
+        logger.info('')
 
     @classmethod
     def sub_cmd_month(cls, args):
@@ -23,6 +56,15 @@ class CMDUpdate(CMDBase):
     @classmethod
     def sub_cmd_remove_out_of_date(cls, args):
         pass
+
+    @classmethod
+    def add_parser_arg_years_since(cls, parser):
+        parser.add_argument(
+            cls.arg_years_since,
+            type=int,
+            help='years since for stock to fetch',
+            default=3
+        )
 
     @classmethod
     def add_parser_arg_ym(cls, parser):
@@ -47,6 +89,7 @@ class CMDUpdate(CMDBase):
             help='create a new local stock csv file',
             parents=[base_parser])
         cls.add_parser_arg_stock_no(scmd_parser)
+        cls.add_parser_arg_years_since(scmd_parser)
         scmd_parser.set_defaults(func=cls.sub_cmd_newly)
 
         # update month
