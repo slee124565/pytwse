@@ -103,11 +103,6 @@ class TWSE(object):
 
         return twse_json
 
-    @classmethod
-    def fetch_csv(cls, stock_no, tdate):
-        jdata = TWSE.fetch_json()
-
-
 class TestTWSE(unittest.TestCase):
 
     stock_no = None
