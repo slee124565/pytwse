@@ -248,7 +248,6 @@ class TestTwse(TWSETestBase):
         self.assertNotEqual(None, twse_json)
 
 
-
 if __name__ == '__main__':
 
     # set logging

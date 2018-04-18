@@ -4,8 +4,8 @@ from datetime import date
 from dateutil.relativedelta import relativedelta
 from time import sleep
 
-import twse
-import csvstore as stockstore
+from twse import TWSE
+from csvstore import CSVStore as stockstore
 
 import logging
 from cmd_base import CMDBase
@@ -30,7 +30,7 @@ class CMDUpdate(CMDBase):
 
         while t_date < date_end:
             # twse_data
-            twse_json = twse.fetch_json(stock_no, t_date)
+            twse_json = TWSE.fetch_json(stock_no, t_date)
             if twse_json is None:
                 logger.warning('twse.fetch_json {} {} fail'.format(stock_no, t_date))
             else:
