@@ -13,6 +13,7 @@ log_level = logging.DEBUG
 class TWSE(object):
     SRC_URL = 'http://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date={Ymd}&stockNo={stock_no}'
     DATE_FORMAT = '%Y-%m-%d'
+    DATA_FIELDS = ['Date', 'Volume', 'Value', 'Open', 'High', 'Low', 'Close', 'Change', 'Transaction']
 
     @classmethod
     def get_or_create_cache_dir(cls):
@@ -51,28 +52,31 @@ class TWSE(object):
     @classmethod
     def load_from_cached(cls, stock_no, tdate):
         cached_file = TWSE.get_stock_cached_file_path(stock_no, tdate)
-        if cached_file:
-            with open(cached_file) as fh:
+        if cached_file and os.path.exists(cached_file):
+            with codecs.open(cached_file, encoding='utf8') as fh:
                 return json.loads(fh.read())
         else:
             return None
 
     @classmethod
-    def fetch_json(cls, stock_no, tdate, saved=True, load_from_cached=True):
+    def fetch_json(cls, stock_no, tdate, load_from_cached=True, saved=True):
         logger.debug('twse fetch stock_no {} with target date {}'.format(stock_no, tdate))
         cache_dir = TWSE.get_or_create_cache_dir()
 
         target_date = tdate
         twse_json = None
         cache_file = os.path.join(cache_dir, TWSE.get_cached_file_name(stock_no, target_date))
+
         if load_from_cached:
             if not os.path.exists(cache_file):
+                logger.debug('stock cache file {} not exist'.format(os.path.basename(cache_file)))
                 twse_json = None
             else:
                 logger.debug('twse fetch from cached file: {}'.format(os.path.basename(cache_file)))
                 with codecs.open(cache_file, 'rb', encoding='utf8') as fh:
                     twse_json = json.loads(fh.read())
-        else:
+
+        if twse_json is None:
             max_try = 14
             count_try = 1
             while count_try <= max_try:
@@ -103,8 +107,36 @@ class TWSE(object):
 
         return twse_json
 
-class TestTWSE(unittest.TestCase):
+    @classmethod
+    def get_revised_date(cls, str_date):
+        arr_date = str_date.split('/')
+        arr_date[0] = 1911 + int(arr_date[0])
+        str_date = '-'.join(str(n) for n in arr_date)
+        try:
+            datetime.strptime(str_date, TWSE.DATE_FORMAT)
+            return str_date
+        except ValueError:
+            return None
 
+    @classmethod
+    def get_stock_csv(cls, stock_no, tdate, with_header=False):
+        twse_json = TWSE.fetch_json(stock_no, tdate)
+        if twse_json:
+            lines = []
+            if with_header:
+                lines.append(TWSE.DATA_FIELDS)
+            for rowdata in twse_json.get('data'):
+                t_data = rowdata
+                t_data[0] = TWSE.get_revised_date(t_data[0])
+                lines.append(','.join(n for n in t_data))
+            stock_csv = '\n'.join(str(line) for line in lines)
+        else:
+            stock_csv = None
+
+        return stock_csv
+
+
+class TWSETestBase(unittest.TestCase):
     stock_no = None
     stock_date = None
     tdate = None
@@ -115,9 +147,9 @@ class TestTWSE(unittest.TestCase):
     test_default = False
 
     def setUp(self):
-        if TestTWSE.stock_no and TestTWSE.stock_date:
-            self.stock_no = TestTWSE.stock_no
-            self.stock_date = TestTWSE.stock_date
+        if TWSETestBase.stock_no and TWSETestBase.stock_date:
+            self.stock_no = TWSETestBase.stock_no
+            self.stock_date = TWSETestBase.stock_date
             if self.stock_date:
                 self.tdate = datetime.strptime(self.stock_date, TWSE.DATE_FORMAT)
         else:
@@ -125,10 +157,50 @@ class TestTWSE(unittest.TestCase):
             self.tdate = self.test_tdate
             self.test_default = True
 
-        logger.debug('test setUp with {}, {}'.format(self.stock_no, self.stock_date))
+        logger.debug('test setUp with {}, {}'.format(self.stock_no, self.tdate))
+
+
+class TestTwseCsv(TWSETestBase):
+
+    def setUp(self):
+        super(TestTwseCsv, self).setUp()
+
+    def test_get_stock_csv_if_cache_exist(self):
+        cache_file_path = TWSE.get_stock_cached_file_path(self.stock_no, self.tdate)
+        if not os.path.exists(cache_file_path):
+            TWSE.fetch_json(self.stock_no, self.tdate)
+
+        stock_csv = TWSE.get_stock_csv(self.stock_no, self.tdate, with_header=False)
+        self.assertNotEqual(None, stock_csv)
+        if self.test_default:
+            self.assertEqual(self.test_stock_data_len, len(stock_csv.split('\n')))
+        else:
+            self.assertGreater(len(stock_csv.split('\n')), 0)
+
+    def test_get_stock_csv_if_cache_not_exist(self):
+        cache_file_path = TWSE.get_stock_cached_file_path(self.stock_no, self.tdate)
+        if os.path.exists(cache_file_path):
+            os.remove(cache_file_path)
+
+        stock_csv = TWSE.get_stock_csv(self.stock_no, self.tdate, with_header=False)
+        self.assertNotEqual(None, stock_csv)
+        if self.test_default:
+            self.assertEqual(self.test_stock_data_len, len(stock_csv.split('\n')))
+        else:
+            self.assertGreater(len(stock_csv.split('\n')), 0)
+
+    def test_get_stoc_csv_with_header(self):
+        twse_json = TWSE.fetch_json(self.stock_no, self.tdate)
+        stock_csv = TWSE.get_stock_csv(self.stock_no, self.tdate, with_header=True)
+        self.assertEqual(len(twse_json.get('data'))+1, len(stock_csv.split('\n')))
+
+
+class TestTwse(TWSETestBase):
+
+    def setUp(self):
+        super(TestTwse, self).setUp()
 
     def test_fetch_json_from_web(self):
-        self.tdate = datetime.strptime(self.stock_date, TWSE.DATE_FORMAT)
         cached_file = TWSE.get_cached_file_name(self.stock_no, self.tdate)
         cached_file_path = os.path.join(TWSE.get_or_create_cache_dir(), cached_file)
 
@@ -151,13 +223,17 @@ class TestTWSE(unittest.TestCase):
             self.assertEqual(self.test_stock_data_len, len(twse_json.get('data')))
 
     def test_analysis_cached_twse_json(self):
+        cached_file_path = TWSE.get_stock_cached_file_path(self.stock_no, self.tdate)
+        if not os.path.exists(cached_file_path):
+            TWSE.fetch_json(self.stock_no, self.tdate, load_from_cached=False)
         twse_json = TWSE.load_from_cached(self.stock_no, self.tdate)
+        self.assertNotEqual(None, twse_json)
         TWSE.analysis_twse_json(twse_json, logger.info)
 
     def test_fetch_json_if_cache_exist(self):
         stock_cached_file_path = TWSE.get_stock_cached_file_path(self.stock_no, self.tdate)
         if not os.path.exists(stock_cached_file_path):
-            twse_json = TWSE.fetch_json(self.stock_no, self.tdate, saved=True, load_from_cached=False)
+            TWSE.fetch_json(self.stock_no, self.tdate, saved=True, load_from_cached=False)
 
         #  exec test function
         twse_json = TWSE.fetch_json(self.stock_no, self.tdate, saved=True, load_from_cached=True)
@@ -168,8 +244,9 @@ class TestTWSE(unittest.TestCase):
         if os.path.exists(stock_cached_file_path):
             os.remove(stock_cached_file_path)
         #  exec test function
-        twse_json = TWSE.fetch_json(self.stock_no, self.tdate, saved=True, load_from_cached=True)
-        self.assertEqual(None, twse_json)
+        twse_json = TWSE.fetch_json(self.stock_no, self.tdate, load_from_cached=True)
+        self.assertNotEqual(None, twse_json)
+
 
 
 if __name__ == '__main__':
@@ -187,7 +264,15 @@ if __name__ == '__main__':
 
     logger.debug('sys.argv: {}, {}'.format(sys.argv, len(sys.argv)))
     if len(sys.argv) > 2:
-        TestTWSE.stock_date = sys.argv.pop()
-        TestTWSE.stock_no = sys.argv.pop()
+        try:
+            stock_date = sys.argv[-1]
+            stock_no = sys.argv[-2]
+            datetime.strptime(stock_date, TWSE.DATE_FORMAT)
+            int(stock_no)
+            TWSETestBase.stock_date = sys.argv.pop()
+            TWSETestBase.stock_no = sys.argv.pop()
+        except ValueError:
+            TWSETestBase.stock_date = None
+            TWSETestBase.stock_no = None
 
     unittest.main()
