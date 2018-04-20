@@ -1,4 +1,13 @@
+"""
+    TWSE Utility Class Major Function
 
+    * classmethods *
+
+
+        - TWSE.fetch_json(stock_no, tdate, load_from_cached=True, saved=True)
+        - TWSE.get_stock_csv(, stock_no, tdate, with_header=False)
+
+"""
 from datetime import timedelta, datetime, date
 import requests
 import os
@@ -25,6 +34,10 @@ class TWSE(object):
     @classmethod
     def get_cached_file_name(cls, stock_no, tdate):
         return '{}_{}.json'.format(stock_no, tdate.strftime('%Y%m'))
+
+    @classmethod
+    def get_csv_file_name(cls, stock_no, tdate):
+        return '{}_{}.csv'.format(stock_no, tdate.strftime('%Y%m'))
 
     @classmethod
     def get_stock_cached_file_path(cls, stock_no, tdate):
@@ -119,19 +132,26 @@ class TWSE(object):
             return None
 
     @classmethod
-    def get_stock_csv(cls, stock_no, tdate, with_header=False):
+    def get_stock_csv(cls, stock_no, tdate, with_header=False, saved=False):
         twse_json = TWSE.fetch_json(stock_no, tdate)
         if twse_json:
             lines = []
             if with_header:
-                lines.append(TWSE.DATA_FIELDS)
+                lines.append(','.join(n for n in TWSE.DATA_FIELDS))
             for rowdata in twse_json.get('data'):
                 t_data = rowdata
                 t_data[0] = TWSE.get_revised_date(t_data[0])
-                lines.append(','.join(n for n in t_data))
+                lines.append(','.join('"{}"'.format(n) for n in t_data))
             stock_csv = '\n'.join(str(line) for line in lines)
         else:
             stock_csv = None
+
+        if saved:
+            csv_file_path = os.path.join(TWSE.get_or_create_cache_dir(),
+                                         TWSE.get_csv_file_name(stock_no, tdate))
+            with open(csv_file_path, 'w') as fh:
+                if stock_csv:
+                    fh.write(stock_csv)
 
         return stock_csv
 
@@ -165,34 +185,13 @@ class TestTwseCsv(TWSETestBase):
     def setUp(self):
         super(TestTwseCsv, self).setUp()
 
-    def test_get_stock_csv_if_cache_exist(self):
-        cache_file_path = TWSE.get_stock_cached_file_path(self.stock_no, self.tdate)
-        if not os.path.exists(cache_file_path):
-            TWSE.fetch_json(self.stock_no, self.tdate)
+    def test_get_stoc_csv_w_header(self):
+        stock_csv_w_header = TWSE.get_stock_csv(self.stock_no, self.tdate, with_header=True)
+        self.assertEqual(len(self.twse_json.get('data'))+1, len(stock_csv_w_header.split('\n')))
 
-        stock_csv = TWSE.get_stock_csv(self.stock_no, self.tdate, with_header=False)
-        self.assertNotEqual(None, stock_csv)
-        if self.test_default:
-            self.assertEqual(self.test_stock_data_len, len(stock_csv.split('\n')))
-        else:
-            self.assertGreater(len(stock_csv.split('\n')), 0)
-
-    def test_get_stock_csv_if_cache_not_exist(self):
-        cache_file_path = TWSE.get_stock_cached_file_path(self.stock_no, self.tdate)
-        if os.path.exists(cache_file_path):
-            os.remove(cache_file_path)
-
-        stock_csv = TWSE.get_stock_csv(self.stock_no, self.tdate, with_header=False)
-        self.assertNotEqual(None, stock_csv)
-        if self.test_default:
-            self.assertEqual(self.test_stock_data_len, len(stock_csv.split('\n')))
-        else:
-            self.assertGreater(len(stock_csv.split('\n')), 0)
-
-    def test_get_stoc_csv_with_header(self):
-        twse_json = TWSE.fetch_json(self.stock_no, self.tdate)
-        stock_csv = TWSE.get_stock_csv(self.stock_no, self.tdate, with_header=True)
-        self.assertEqual(len(twse_json.get('data'))+1, len(stock_csv.split('\n')))
+    def test_get_stoc_csv_wo_header(self):
+        stock_csv_wo_header = TWSE.get_stock_csv(self.stock_no, self.tdate, with_header=False)
+        self.assertEqual(len(self.twse_json.get('data')), len(stock_csv_wo_header.split('\n')))
 
 
 class TestTwse(TWSETestBase):
