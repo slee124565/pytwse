@@ -16,7 +16,10 @@ import json
 import unittest
 import logging
 logger = logging.getLogger(__name__)
-log_level = logging.DEBUG
+if os.environ.get('LOG_LEVEL', None):
+    log_level = int(os.environ.get('LOG_LEVEL'))
+else:
+    log_level = logging.WARNING
 
 
 class TWSE(object):
@@ -184,6 +187,7 @@ class TestTwseCsv(TWSETestBase):
 
     def setUp(self):
         super(TestTwseCsv, self).setUp()
+        self.twse_json = TWSE.fetch_json(self.stock_no, self.tdate)
 
     def test_get_stoc_csv_w_header(self):
         stock_csv_w_header = TWSE.get_stock_csv(self.stock_no, self.tdate, with_header=True)
