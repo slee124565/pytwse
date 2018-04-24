@@ -2,9 +2,13 @@
 from datetime import datetime, date
 from twse import TWSE
 import unittest
+import os
 import logging
 logger = logging.getLogger(__name__)
-log_level = logging.DEBUG
+if os.environ.get('LOG_LEVEL', None):
+    log_level = int(os.environ.get('LOG_LEVEL'))
+else:
+    log_level = logging.WARNING
 
 
 class CSVStore(object):
