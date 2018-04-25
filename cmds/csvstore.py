@@ -1,4 +1,6 @@
 
+from io import StringIO
+import pandas as pd
 from datetime import datetime, date
 from twse import TWSE
 import unittest
@@ -12,6 +14,58 @@ else:
 
 
 class CSVStore(object):
+
+    def __str__(self):
+        return '{}'.format(self.__class__.__name__)
+
+    @classmethod
+    def get_store_path(cls):
+        store_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'csvstore')
+        if not os.path.exists(store_path):
+            logger.debug('{} store_path not exist, creating {} ...'.format(cls.__name__, store_path))
+            os.mkdir(store_path)
+        return store_path
+
+    @classmethod
+    def get_stock_store_file(cls, stock_no):
+        stock_store_file = os.path.join(CSVStore.get_store_path(), '{}.csv'.format(stock_no))
+        if os.path.exists(stock_store_file):
+            logger.debug('stock store file {} not exist'.format(stock_store_file))
+        return stock_store_file
+
+    @classmethod
+    def update_stock_store(cls, stock_no, csv_content):
+        df_update = pd.read_csv(StringIO(u'{}'.format(csv_content)), index_col=['Date'], parse_dates=['Date'])
+
+        stock_store_file = CSVStore.get_stock_store_file(stock_no)
+        frames = []
+        if os.path.exists(stock_store_file):
+            df_origin = pd.read_csv(stock_store_file, index_col=['Date'], parse_dates=['Date'])
+            frames.append(df_origin)
+            count_origin, _ = df_origin.shape
+        else:
+            count_origin = 0
+
+        frames.append(df_update)
+        stock_df = pd.concat(frames)
+
+        count_1, _ = count_0, _ = stock_df.shape
+        if len(frames) > 1:
+            count_0, _ = stock_df.shape
+            stock_df.drop_duplicates(keep='last', inplace=True)
+
+        if count_1 < count_0:
+            logger.debug('{} update_stock_store {} drop duplicates {}'.format(
+                cls.__name__, stock_no, (count_1-count_0)
+            ))
+
+        tmp_file = '{}.tmp'.format(stock_store_file)
+        stock_df.to_csv(tmp_file)
+        os.rename(tmp_file, stock_store_file)
+        count_final, _ = stock_df.shape
+        logger.info('update_stock_store {} count {} with new {} final {}'.format(
+            stock_no, count_origin, (count_1-count_origin), count_final))
+        return stock_df
 
     @classmethod
     def get_revised_date(cls, str_date):

@@ -5,7 +5,7 @@
 
 
         - TWSE.fetch_json(stock_no, tdate, load_from_cached=True, saved=True)
-        - TWSE.get_stock_csv(, stock_no, tdate, with_header=False)
+        - TWSE.get_stock_csv(, stock_no, tdate, with_header=True, saved=True)
 
 """
 from datetime import timedelta, datetime, date
@@ -79,7 +79,10 @@ class TWSE(object):
         logger.debug('twse fetch stock_no {} with target date {}'.format(stock_no, tdate))
         cache_dir = TWSE.get_or_create_cache_dir()
 
-        target_date = tdate
+        if tdate > date.today():
+            target_date = date.today()
+        else:
+            target_date = tdate
         twse_json = None
         cache_file = os.path.join(cache_dir, TWSE.get_cached_file_name(stock_no, target_date))
 
@@ -100,21 +103,24 @@ class TWSE(object):
                                           stock_no=stock_no)
                 logger.debug('twse fetch url: {}'.format(url))
                 r = requests.get(url)
-                twse_json = r.json()
-                if saved:
-                    with codecs.open(cache_file, 'wb', encoding='utf8') as fh:
-                        fh.write(json.dumps(twse_json, indent=2))
+                try:
+                    twse_json = r.json()
+                    if saved:
+                        with codecs.open(cache_file, 'wb', encoding='utf8') as fh:
+                            fh.write(json.dumps(twse_json, indent=2))
 
-                # validate twse_json object keys: [u'stat', u'title', u'fields', u'notes', u'date', u'data']
-                logger.debug('twse fetch object keys: {}'.format(str(twse_json.keys())))
-                if len(twse_json.keys()) != 6:
-                    logger.warning('twse fetch object keys validate fail, {}'.format(str(twse_json.keys())))
-                    target_date = target_date - timedelta(days=1)
-                    count_try += 1
-                    logger.warning('twse fetch retry count {}'.format(count_try))
-                else:
-                    TWSE.analysis_twse_json(twse_json, logger.debug)
-                    break
+                    # validate twse_json object keys: [u'stat', u'title', u'fields', u'notes', u'date', u'data']
+                    logger.debug('twse fetch object keys: {}'.format(str(twse_json.keys())))
+                    if len(twse_json.keys()) != 6:
+                        logger.warning('twse fetch object keys validate fail, {}'.format(str(twse_json.keys())))
+                        target_date = target_date - timedelta(days=1)
+                        count_try += 1
+                        logger.warning('twse fetch retry count {}'.format(count_try))
+                    else:
+                        TWSE.analysis_twse_json(twse_json, logger.debug)
+                        break
+                except ValueError:
+                    logger.warning('twse fetch content ValueError: {}'.format(r.content))
 
                 if count_try > max_try:
                     logger.warning('twse fetch max retry exceed, break')
@@ -135,7 +141,7 @@ class TWSE(object):
             return None
 
     @classmethod
-    def get_stock_csv(cls, stock_no, tdate, with_header=False, saved=False):
+    def get_stock_csv(cls, stock_no, tdate, with_header=True, saved=True):
         twse_json = TWSE.fetch_json(stock_no, tdate)
         if twse_json:
             lines = []
@@ -146,8 +152,10 @@ class TWSE(object):
                 t_data[0] = TWSE.get_revised_date(t_data[0])
                 lines.append(','.join('"{}"'.format(n) for n in t_data))
             stock_csv = '\n'.join(str(line) for line in lines)
+            count = len(lines) - 1 if with_header else len(lines)
         else:
             stock_csv = None
+            count = 0
 
         if saved:
             csv_file_path = os.path.join(TWSE.get_or_create_cache_dir(),
@@ -155,7 +163,7 @@ class TWSE(object):
             with open(csv_file_path, 'w') as fh:
                 if stock_csv:
                     fh.write(stock_csv)
-
+        logger.info('get_stock_csv {} {} count {}'.format(stock_no, tdate, count))
         return stock_csv
 
 

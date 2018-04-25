@@ -7,6 +7,9 @@ class CMDBase(object):
 
     arg_stock_no = 'stock_no'
 
+    def __str__(self):
+        return '{}'.format(self.__class__.__name__)
+
     # -- common args functions for all CMDBase
     @classmethod
     def get_base_parser(cls):
@@ -25,5 +28,5 @@ class CMDBase(object):
     def add_parser_arg_stock_no(cls, parser):
         parser.add_argument(
             cls.arg_stock_no,
-            type=int,
+            type=str,
             help='stock no.')

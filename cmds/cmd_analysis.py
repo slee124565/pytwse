@@ -16,7 +16,7 @@ class CMDAnalysis(CMDBase):
         cmd_parser = subparsers.add_parser(
             'analysis',
             description=__doc__,
-            help='analysis local stock csv file and print a report',
+            help='analysis local stock csvstore file and print a report',
             parents=[base_parser])
 
         scmd_subparsers = cmd_parser.add_subparsers(title='sub-command')
