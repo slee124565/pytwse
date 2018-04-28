@@ -34,7 +34,7 @@ class CSVStore(object):
         return stock_store_file
 
     @classmethod
-    def update_stock_store(cls, stock_no, csv_content):
+    def store_update_with_csv(cls, stock_no, csv_content):
         df_update = pd.read_csv(StringIO(u'{}'.format(csv_content)), index_col=['Date'], parse_dates=['Date'])
 
         stock_store_file = CSVStore.get_stock_store_file(stock_no)
@@ -43,6 +43,8 @@ class CSVStore(object):
             df_origin = pd.read_csv(stock_store_file, index_col=['Date'], parse_dates=['Date'])
             frames.append(df_origin)
             count_origin, _ = df_origin.shape
+            logger.debug('{} store_update_with_csv load exist stock csv, count {}'.format(
+                cls.__name__, count_origin))
         else:
             count_origin = 0
 
@@ -51,33 +53,35 @@ class CSVStore(object):
 
         count_1, _ = count_0, _ = stock_df.shape
         if len(frames) > 1:
-            count_0, _ = stock_df.shape
-            stock_df.drop_duplicates(keep='last', inplace=True)
+            logger.debug('{} store_update_with_csv with drop_duplicates'.format(cls.__name__))
+            stock_df = stock_df.reset_index().drop_duplicates('Date', keep='last').set_index('Date')
+            count_1, _ = stock_df.shape
 
         if count_1 < count_0:
-            logger.debug('{} update_stock_store {} drop duplicates {}'.format(
-                cls.__name__, stock_no, (count_1-count_0)
+            logger.debug('{} store_update_with_csv {} drop duplicates {}'.format(
+                cls.__name__, stock_no, (count_0-count_1)
             ))
+        else:
+            logger.debug('{} store_update_with_csv no duplicated found'.format(cls.__name__))
 
         tmp_file = '{}.tmp'.format(stock_store_file)
         stock_df.to_csv(tmp_file)
         os.rename(tmp_file, stock_store_file)
         count_final, _ = stock_df.shape
-        logger.info('update_stock_store {} count {} with new {} final {}'.format(
+        logger.info('store_update_with_csv {} count {} with new {} final {}'.format(
             stock_no, count_origin, (count_1-count_origin), count_final))
         return stock_df
 
     @classmethod
-    def get_revised_date(cls, str_date):
-        arr_date = str_date.split('/')
-        arr_date[0] = 1911 + int(arr_date[0])
-        return '-'.join(str(n) for n in arr_date)
-
-    @classmethod
-    def save_stock_twse_json(cls, stock_no, twse_json):
-        twse_data = twse_json.get('data')
-        for rowdata in twse_data:
-            rowdata[0] = CSVStore.get_revised_date(rowdata[0])
+    def store_get_dataframe(cls, stock_no):
+        store_file = CSVStore.get_stock_store_file(stock_no)
+        if os.path.exists(store_file):
+            stock_df = pd.read_csv(store_file, index_col=['Date'], parse_dates=['Date'])
+            logger.info('store_get_dataframe {} shape {}'.format(stock_no, stock_df.shape))
+            return stock_df
+        else:
+            logger.warning('{} store_get_dataframe {} not exist'.format(cls.__name__, stock_no))
+            return None
 
 
 class TestCSVStore(unittest.TestCase):
@@ -101,17 +105,6 @@ class TestCSVStore(unittest.TestCase):
             self.test_default = True
 
         logger.debug('test setUp with {}, {}'.format(self.stock_no, self.tdate))
-
-    def test_get_revised_date(self):
-        twse_json = TWSE.fetch_json(self.stock_no, self.tdate)
-        self.assertNotEqual(None, twse_json)
-
-        twse_data = twse_json.get('data')
-        self.assertNotEqual(None, twse_json.get('data'))
-
-        for rowdata in twse_data:
-            revised_date_str = CSVStore.get_revised_date(rowdata[0])
-            self.assertEqual(datetime, type(datetime.strptime(revised_date_str, TWSE.DATE_FORMAT)))
 
 
 if __name__ == '__main__':

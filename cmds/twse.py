@@ -76,22 +76,24 @@ class TWSE(object):
 
     @classmethod
     def fetch_json(cls, stock_no, tdate, load_from_cached=True, saved=True):
-        logger.debug('twse fetch stock_no {} with target date {}'.format(stock_no, tdate))
+        logger.debug('fetch_json with stock_no {} with target date {}'.format(stock_no, tdate))
         cache_dir = TWSE.get_or_create_cache_dir()
 
         if tdate > date.today():
             target_date = date.today()
         else:
             target_date = tdate
+        logger.debug('fetch_json set target_date {}'.format(target_date))
+
         twse_json = None
         cache_file = os.path.join(cache_dir, TWSE.get_cached_file_name(stock_no, target_date))
 
         if load_from_cached:
+            logger.debug('fetch_json load from cached file {}'.format(cache_file))
             if not os.path.exists(cache_file):
-                logger.debug('stock cache file {} not exist'.format(os.path.basename(cache_file)))
+                logger.debug('fetch_json cache file {} not exist'.format(os.path.basename(cache_file)))
                 twse_json = None
             else:
-                logger.debug('twse fetch from cached file: {}'.format(os.path.basename(cache_file)))
                 with codecs.open(cache_file, 'rb', encoding='utf8') as fh:
                     twse_json = json.loads(fh.read())
 
@@ -101,7 +103,7 @@ class TWSE(object):
             while count_try <= max_try:
                 url = TWSE.SRC_URL.format(Ymd=target_date.strftime('%Y%m%d'),
                                           stock_no=stock_no)
-                logger.debug('twse fetch url: {}'.format(url))
+                logger.debug('fetch_json with url: {}'.format(url))
                 r = requests.get(url)
                 try:
                     twse_json = r.json()
@@ -110,20 +112,20 @@ class TWSE(object):
                             fh.write(json.dumps(twse_json, indent=2))
 
                     # validate twse_json object keys: [u'stat', u'title', u'fields', u'notes', u'date', u'data']
-                    logger.debug('twse fetch object keys: {}'.format(str(twse_json.keys())))
+                    logger.debug('fetch_json object keys: {}'.format(str(twse_json.keys())))
                     if len(twse_json.keys()) != 6:
-                        logger.warning('twse fetch object keys validate fail, {}'.format(str(twse_json.keys())))
+                        logger.warning('fetch_json object keys validate fail, {}'.format(str(twse_json.keys())))
                         target_date = target_date - timedelta(days=1)
                         count_try += 1
-                        logger.warning('twse fetch retry count {}'.format(count_try))
+                        logger.warning('fetch_json retry count {}'.format(count_try))
                     else:
                         TWSE.analysis_twse_json(twse_json, logger.debug)
                         break
                 except ValueError:
-                    logger.warning('twse fetch content ValueError: {}'.format(r.content))
+                    logger.warning('fetch_json content ValueError: {}'.format(r.content))
 
                 if count_try > max_try:
-                    logger.warning('twse fetch max retry exceed, break')
+                    logger.warning('fetch_json max retry exceed, break')
                     twse_json = None
                     break
 

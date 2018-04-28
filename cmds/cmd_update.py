@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 class CMDUpdate(CMDBase):
     arg_year_month = 'year_month'
     arg_years_since = 'years_since'
+
     DATE_FORMAT = '%Y%m%d'
 
     @classmethod
@@ -24,13 +25,53 @@ class CMDUpdate(CMDBase):
         # stock_no and years_since
         stock_no = getattr(args, cls.arg_stock_no)
         date_ym = getattr(args, cls.arg_year_month)
-        tdate = datetime.strptime('{}15'.format(date_ym), cls.DATE_FORMAT).date()
+        if date_ym is None:
+            tdate = date.today()
+        else:
+            tdate = datetime.strptime('{}15'.format(date_ym), cls.DATE_FORMAT).date()
 
-        #  fetch stock csv
+        logger.debug('{} sub_cmd_month with stock {} and date {}'.format(cls.__name__, stock_no, tdate))
+
+        #  fetch stock csv update forced
+        TWSE.fetch_json(stock_no, tdate, False)
+
+        #  get stock csv data
         stock_csv = TWSE.get_stock_csv(stock_no, tdate, with_header=True)
 
         #  update store
-        stockstore.update_stock_store(stock_no, stock_csv)
+        stockstore.store_update_with_csv(stock_no, stock_csv)
+
+    @classmethod
+    def sub_cmd_store(cls, args):
+        stock_no = getattr(args, cls.arg_stock_no)
+        years_since = getattr(args, cls.arg_years_since)
+
+        stock_df = stockstore.store_get_dataframe(stock_no)
+        if stock_df is not None:
+            date_since = stock_df.index[-1].date()
+        else:
+            date_since = date.today() + relativedelta(years=-years_since)
+
+        logger.debug('sub_cmd_stock {} last date {}'.format(stock_no, date_since))
+        t_date = date_since
+        t_today = date.today()
+
+        updates = []
+        while int(t_date.strftime('%Y%m')) <= int(t_today.strftime('%Y%m')):
+            stock_csv = TWSE.get_stock_csv(stock_no, t_date, with_header=False)
+            if stock_csv is not None:
+                updates.append(stock_csv)
+
+            delay = int(random.random()*10) % 3 + 0.5
+            sleep(delay)
+            t_date += relativedelta(months=1)
+
+        if len(updates) > 0:
+            updates.insert(0, ','.join(TWSE.DATA_FIELDS))
+            # logger.info('updates:\n{}'.format(str(updates)))
+            stockstore.store_update_with_csv(stock_no, '\n'.join(n for n in updates))
+        else:
+            logger.warning('{} sub_cmd_store fail, no stock_csv downloaded'.format(cls.__name__))
 
     @classmethod
     def sub_cmd_newly(cls, args):
@@ -51,15 +92,11 @@ class CMDUpdate(CMDBase):
                 logger.warning('{} get_stock_csv {} {} fail'.format(cls, stock_no, t_date))
             else:
                 # save twse_data
-                stockstore.update_stock_store(stock_no, stock_csv)
+                stockstore.store_update_with_csv(stock_no, stock_csv)
                 sleep(int(random.random()*10) % 3 + 0.5)
             t_date += relativedelta(months=1)
         logger.info('==')
         logger.info('')
-
-    @classmethod
-    def sub_cmd_last_to_now(cls, args):
-        pass
 
     @classmethod
     def sub_cmd_remove_out_of_date(cls, args):
@@ -80,7 +117,10 @@ class CMDUpdate(CMDBase):
         parser.add_argument(
             cls.arg_year_month,
             type=int,
-            help='yyyyMM')
+            nargs='?',
+            help='yyyyMM',
+            default=None
+        )
 
     @classmethod
     def get_cmd_parser(cls, base_parser, subparsers):
@@ -101,13 +141,14 @@ class CMDUpdate(CMDBase):
         cls.add_parser_arg_ym(scmd_parser)
         scmd_parser.set_defaults(func=cls.sub_cmd_month)
 
-        # update last-to-now
+        # update stock
         scmd_parser = scmd_subparsers.add_parser(
-            'last-to-now',
+            'store',
             help='update local stock csvstore file from last month to this month',
             parents=[base_parser])
         cls.add_parser_arg_stock_no(scmd_parser)
-        scmd_parser.set_defaults(func=cls.sub_cmd_last_to_now)
+        cls.add_parser_arg_years_since(scmd_parser)
+        scmd_parser.set_defaults(func=cls.sub_cmd_store)
 
         # update newly
         scmd_parser = scmd_subparsers.add_parser(
