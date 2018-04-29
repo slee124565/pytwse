@@ -19,6 +19,7 @@ class CMDUpdate(CMDBase):
     arg_years_since = 'years_since'
 
     DATE_FORMAT = '%Y%m%d'
+    YEAR_SINCE = 3
 
     @classmethod
     def sub_cmd_month(cls, args):
@@ -74,33 +75,23 @@ class CMDUpdate(CMDBase):
             logger.warning('{} sub_cmd_store fail, no stock_csv downloaded'.format(cls.__name__))
 
     @classmethod
-    def sub_cmd_newly(cls, args):
-        # stock_no and years_since
+    def sub_cmd_out_of_date(cls, args):
         stock_no = getattr(args, cls.arg_stock_no)
         years_since = getattr(args, cls.arg_years_since)
+        date_before = date.today() + relativedelta(years=-years_since)
+        logger.debug('{} sub_cmd_out_of_date stock {} date before {}'.format(
+            cls.__name__, stock_no, date_before))
 
-        # date_since, date_end
-        date_end = date.today()
-        date_since = date_end + relativedelta(years=-years_since)
-        t_date = date_since
-
-        while t_date < date_end:
-            # twse_data
-            # twse_json = TWSE.fetch_json(stock_no, t_date, load_from_cached=False)
-            stock_csv = TWSE.get_stock_csv(stock_no, t_date)
-            if stock_csv is None:
-                logger.warning('{} get_stock_csv {} {} fail'.format(cls, stock_no, t_date))
-            else:
-                # save twse_data
-                stockstore.store_update_with_csv(stock_no, stock_csv)
-                sleep(int(random.random()*10) % 3 + 0.5)
-            t_date += relativedelta(months=1)
-        logger.info('==')
-        logger.info('')
-
-    @classmethod
-    def sub_cmd_remove_out_of_date(cls, args):
-        pass
+        stock_df = stockstore.store_get_dataframe(stock_no)
+        if stock_df:
+            shape_origin = stock_df.shape
+            stock_df = stock_df[date_before:]
+            shape_current = stock_df.shape
+            stockstore.store_save_stock_dataframe(stock_no, stock_df)
+            logger.info('{} sub_cmd_out_of_date from {} to {}'.format(
+                cls.__name__, shape_origin, shape_current))
+        else:
+            logger.error('{} sub_cmd_out_of_date fail'.format(cls.__name__))
 
     @classmethod
     def add_parser_arg_years_since(cls, parser):
@@ -109,7 +100,7 @@ class CMDUpdate(CMDBase):
             type=int,
             nargs='?',
             help='years since for stock to fetch, default:%(default)s',
-            default=3
+            default=cls.YEAR_SINCE
         )
 
     @classmethod
@@ -150,21 +141,13 @@ class CMDUpdate(CMDBase):
         cls.add_parser_arg_years_since(scmd_parser)
         scmd_parser.set_defaults(func=cls.sub_cmd_store)
 
-        # update newly
-        scmd_parser = scmd_subparsers.add_parser(
-            'newly',
-            help='create a new local stock csvstore file',
-            parents=[base_parser])
-        cls.add_parser_arg_stock_no(scmd_parser)
-        cls.add_parser_arg_years_since(scmd_parser)
-        scmd_parser.set_defaults(func=cls.sub_cmd_newly)
-
         # update remove-old
         scmd_parser = scmd_subparsers.add_parser(
-            'remove-out-of-date',
+            'out-of-date',
             help='remove local stock csvstore file for those row data out-of-date',
             parents=[base_parser])
         cls.add_parser_arg_stock_no(scmd_parser)
-        scmd_parser.set_defaults(func=cls.sub_cmd_remove_out_of_date)
+        cls.add_parser_arg_years_since(scmd_parser)
+        scmd_parser.set_defaults(func=cls.sub_cmd_out_of_date)
 
         return cmd_parser

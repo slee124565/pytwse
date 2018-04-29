@@ -34,6 +34,17 @@ class CSVStore(object):
         return stock_store_file
 
     @classmethod
+    def store_get_dataframe(cls, stock_no):
+        store_file = CSVStore.get_stock_store_file(stock_no)
+        if os.path.exists(store_file):
+            stock_df = pd.read_csv(store_file, index_col=['Date'], parse_dates=['Date'])
+            logger.debug('store_get_dataframe {} shape {}'.format(stock_no, stock_df.shape))
+            return stock_df
+        else:
+            logger.warning('{} store_get_dataframe {} not exist'.format(cls.__name__, stock_no))
+            return None
+
+    @classmethod
     def store_update_with_csv(cls, stock_no, csv_content):
         df_update = pd.read_csv(StringIO(u'{}'.format(csv_content)), index_col=['Date'], parse_dates=['Date'])
 
@@ -50,6 +61,7 @@ class CSVStore(object):
 
         frames.append(df_update)
         stock_df = pd.concat(frames)
+        stock_df.sort_index(inplace=True)
 
         count_1, _ = count_0, _ = stock_df.shape
         if len(frames) > 1:
@@ -68,19 +80,20 @@ class CSVStore(object):
         stock_df.to_csv(tmp_file)
         os.rename(tmp_file, stock_store_file)
         count_final, _ = stock_df.shape
-        logger.info('store_update_with_csv {} count {} with new {} final {}'.format(
+        logger.debug('store_update_with_csv {} count {} with new {} final {}'.format(
             stock_no, count_origin, (count_1-count_origin), count_final))
         return stock_df
 
     @classmethod
-    def store_get_dataframe(cls, stock_no):
-        store_file = CSVStore.get_stock_store_file(stock_no)
-        if os.path.exists(store_file):
-            stock_df = pd.read_csv(store_file, index_col=['Date'], parse_dates=['Date'])
-            logger.info('store_get_dataframe {} shape {}'.format(stock_no, stock_df.shape))
+    def store_save_stock_dataframe(cls, stock_no, stock_df):
+        if type(stock_df) is pd.DataFrame:
+            stock_store_file = CSVStore.get_stock_store_file(stock_no)
+            tmp_file = '{}.tmp'.format(stock_store_file)
+            stock_df.to_csv(tmp_file)
+            os.rename(tmp_file, stock_store_file)
             return stock_df
         else:
-            logger.warning('{} store_get_dataframe {} not exist'.format(cls.__name__, stock_no))
+            logger.warning('{} store_save_stock_dataframe param error'.format(cls.__name__))
             return None
 
 
