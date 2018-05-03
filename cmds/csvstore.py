@@ -85,7 +85,7 @@ class CSVStore(object):
         return stock_df
 
     @classmethod
-    def store_save_stock_dataframe(cls, stock_no, stock_df):
+    def store_save_dataframe(cls, stock_no, stock_df):
         if type(stock_df) is pd.DataFrame:
             stock_store_file = CSVStore.get_stock_store_file(stock_no)
             tmp_file = '{}.tmp'.format(stock_store_file)
@@ -93,7 +93,7 @@ class CSVStore(object):
             os.rename(tmp_file, stock_store_file)
             return stock_df
         else:
-            logger.warning('{} store_save_stock_dataframe param error'.format(cls.__name__))
+            logger.warning('{} store_save_dataframe param error'.format(cls.__name__))
             return None
 
 

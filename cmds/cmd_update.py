@@ -87,7 +87,7 @@ class CMDUpdate(CMDBase):
             shape_origin = stock_df.shape
             stock_df = stock_df[date_before:]
             shape_current = stock_df.shape
-            stockstore.store_save_stock_dataframe(stock_no, stock_df)
+            stockstore.store_save_dataframe(stock_no, stock_df)
             logger.info('{} sub_cmd_out_of_date from {} to {}'.format(
                 cls.__name__, shape_origin, shape_current))
         else:

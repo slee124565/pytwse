@@ -22,8 +22,8 @@ if __name__ == '__main__':
     cmd_parser = CMDUpdate.get_cmd_parser(base_parser, subparsers)
 
     # [analysis] command arguments
-    from cmds.cmd_analysis import CMDAnalysis
-    cmd_parser = CMDAnalysis.get_cmd_parser(base_parser, subparsers)
+    from cmds.cmd_parse import CMDParse
+    cmd_parser = CMDParse.get_cmd_parser(base_parser, subparsers)
 
     args = parser.parse_args()
 
