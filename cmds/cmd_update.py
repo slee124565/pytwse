@@ -59,6 +59,7 @@ class CMDUpdate(CMDBase):
 
         updates = []
         while int(t_date.strftime('%Y%m')) <= int(t_today.strftime('%Y%m')):
+            TWSE.fetch_json(stock_no=stock_no, tdate=t_date, load_from_cached=False)
             stock_csv = TWSE.get_stock_csv(stock_no, t_date, with_header=False)
             if stock_csv is not None:
                 updates.append(stock_csv)
