@@ -95,7 +95,7 @@ class StockDay(BaseCommand):
                                      stock_no=self.stock_no)
                 self.logger.debug('download twse url: %s' % url)
                 r = requests.get(url)
-                twse_json = r.json()
+                twse_json = r.json() if r.content else {}
                 if not self._data_validate(twse_json):
                     target_date = target_date - timedelta(days=1)
                     self.logger.warning('twse stock date (%s) not exist, try previous day %s' % (
