@@ -3,3 +3,4 @@ commands/cache_data
 data
 .project
 .pydevproject
+.idea/
